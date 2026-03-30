@@ -1,0 +1,32 @@
+# Right Wing - Swept delta shape (mirror of left wing)
+# Root at X=0, tip extends in +X direction
+
+# Top surface vertices (y=+0.06)
+v  0.0   0.06   0.5
+v  0.0   0.06  -0.8
+v  2.5   0.06  -0.3
+v  2.5   0.06   0.7
+
+# Bottom surface vertices (y=-0.06)
+v  0.0  -0.06   0.5
+v  0.0  -0.06  -0.8
+v  2.5  -0.06  -0.3
+v  2.5  -0.06   0.7
+
+# Top face (outward +Y)
+f 4 3 2 1
+
+# Bottom face (outward -Y)
+f 5 6 7 8
+
+# Front (leading) edge
+f 1 5 8 4
+
+# Back (trailing) edge
+f 3 7 6 2
+
+# Root edge (attaches to hull)
+f 1 2 6 5
+
+# Tip edge
+f 4 8 7 3

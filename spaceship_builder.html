@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Ship Builder</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#111; color:#ccc; font-family:'Courier New', monospace; overflow:hidden; height:100vh; display:flex; flex-direction:column; }
+
+  #topbar {
+    background:#1a1a1a;
+    border-bottom:1px solid #2a2a2a;
+    padding:8px 16px;
+    display:flex;
+    align-items:center;
+    gap:16px;
+    flex-shrink:0;
+    z-index:100;
+  }
+  #topbar h1 { font-size:14px; color:#4af; letter-spacing:.15em; text-transform:uppercase; }
+  .tb-sep { width:1px; height:20px; background:#333; }
+  .tb-btn {
+    background:#222; border:1px solid #333; color:#aaa;
+    padding:4px 12px; border-radius:4px; cursor:pointer; font-size:11px;
+    font-family:inherit; letter-spacing:.05em; transition:all .15s;
+  }
+  .tb-btn:hover { background:#2a3a4a; border-color:#4af; color:#4af; }
+  .tb-btn.active { background:#1a2a3a; border-color:#4af; color:#4af; }
+  #tb-mode { margin-left:auto; font-size:11px; color:#556; }
+
+  #main { display:flex; flex:1; overflow:hidden; }
+
+  /* ---- LEFT PANEL ---- */
+  #panel-left {
+    width:200px;
+    background:#161616;
+    border-right:1px solid #222;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    flex-shrink:0;
+  }
+  .panel-section { padding:10px; border-bottom:1px solid #222; }
+  .panel-title { font-size:10px; color:#556; letter-spacing:.12em; text-transform:uppercase; margin-bottom:8px; }
+
+  #block-list { padding:6px; display:flex; flex-direction:column; gap:4px; overflow-y:auto; flex:1; }
+  .block-btn {
+    background:#1e1e1e; border:1px solid #2a2a2a; color:#bbb;
+    padding:6px 10px; border-radius:4px; cursor:pointer; font-size:11px;
+    font-family:inherit; text-align:left; display:flex; align-items:center; gap:8px;
+    transition:all .12s; flex-shrink:0;
+  }
+  .block-btn:hover { background:#252525; border-color:#3a3a3a; }
+  .block-btn.selected { background:#1a2a3a; border-color:#4af; color:#fff; }
+  .block-color-dot { width:10px; height:10px; border-radius:2px; flex-shrink:0; }
+  .block-btn-label { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .block-btn-dims { font-size:9px; color:#445; }
+
+  /* ---- ADD BLOCK FORM ---- */
+  #add-form { padding:8px; display:flex; flex-direction:column; gap:6px; }
+  .form-row { display:flex; flex-direction:column; gap:2px; }
+  .form-label { font-size:10px; color:#556; }
+  .form-input {
+    background:#1e1e1e; border:1px solid #2a2a2a; color:#ccc;
+    padding:4px 7px; border-radius:3px; font-size:11px; font-family:inherit;
+    outline:none; transition:border .12s;
+  }
+  .form-input:focus { border-color:#4af; }
+  .form-row-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:4px; }
+  #btn-add-block {
+    background:#1a3a5a; border:1px solid #4af; color:#4af;
+    padding:5px; border-radius:4px; cursor:pointer; font-size:11px;
+    font-family:inherit; letter-spacing:.05em; transition:all .12s; margin-top:2px;
+  }
+  #btn-add-block:hover { background:#1e4a6a; }
+
+  /* ---- CANVAS ---- */
+  #canvas-wrap { flex:1; position:relative; overflow:hidden; }
+  canvas { display:block; }
+
+  /* ---- RIGHT PANEL ---- */
+  #panel-right {
+    width:180px;
+    background:#161616;
+    border-left:1px solid #222;
+    display:flex;
+    flex-direction:column;
+    flex-shrink:0;
+  }
+  #selected-info { padding:10px; font-size:11px; color:#556; flex:1; }
+  #selected-info.active { color:#ccc; }
+  .info-row { display:flex; justify-content:space-between; margin-bottom:5px; }
+  .info-key { color:#556; }
+  .info-val { color:#aaa; }
+  .info-sep { border:none; border-top:1px solid #222; margin:8px 0; }
+
+  /* transform controls */
+  .xform-row { display:flex; align-items:center; gap:6px; margin-bottom:5px; }
+  .xform-label { font-size:10px; color:#556; width:14px; }
+  .xform-btn { background:#1e1e1e; border:1px solid #2a2a2a; color:#888; width:22px; height:22px; border-radius:3px; cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all .1s; }
+  .xform-btn:hover { border-color:#4af; color:#4af; }
+  .xform-val { font-size:10px; color:#aaa; min-width:36px; text-align:center; }
+
+  /* ---- STATUSBAR ---- */
+  #statusbar {
+    background:#131313;
+    border-top:1px solid #222;
+    padding:4px 14px;
+    font-size:10px;
+    color:#445;
+    display:flex;
+    gap:20px;
+    flex-shrink:0;
+  }
+  #statusbar span { color:#667; }
+  #statusbar b { color:#889; }
+
+  /* ---- GRID OVERLAY ---- */
+  #grid-info {
+    position:absolute; bottom:10px; right:10px;
+    background:#0009; border:1px solid #2a2a2a; border-radius:5px;
+    padding:6px 10px; font-size:10px; color:#445; pointer-events:none;
+  }
+  #help-overlay {
+    position:absolute; top:10px; left:50%; transform:translateX(-50%);
+    background:#0009; border:1px solid #2a2a2a; border-radius:5px;
+    padding:6px 14px; font-size:10px; color:#556; pointer-events:none;
+    white-space:nowrap;
+  }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <h1>⬡ Ship Builder</h1>
+  <div class="tb-sep"></div>
+  <button class="tb-btn active" id="mode-place" onclick="setMode('place')">Разместить</button>
+  <button class="tb-btn" id="mode-select" onclick="setMode('select')">Выбрать</button>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" onclick="undoLast()">↩ Отменить</button>
+  <button class="tb-btn" onclick="clearAll()">⊘ Очистить</button>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" onclick="saveScene()">💾 Сохранить</button>
+  <button class="tb-btn" onclick="loadScene()">📂 Загрузить</button>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" onclick="resetCamera()">🎥 Сброс камеры</button>
+  <div id="tb-mode">блоков: <span id="count">0</span></div>
+</div>
+
+<div id="main">
+
+  <!-- LEFT: block palette + add form -->
+  <div id="panel-left">
+    <div class="panel-section">
+      <div class="panel-title">Библиотека блоков</div>
+    </div>
+    <div id="block-list"></div>
+
+    <div class="panel-section" style="border-top:1px solid #222;border-bottom:none;">
+      <div class="panel-title">Добавить свой блок</div>
+      <div id="add-form">
+        <div class="form-row">
+          <span class="form-label">Название</span>
+          <input class="form-input" id="f-name" placeholder="Мой блок" />
+        </div>
+        <div class="form-row">
+          <span class="form-label">Форма</span>
+          <select class="form-input" id="f-shape">
+            <option value="box">Ящик (Box)</option>
+            <option value="cylinder">Цилиндр</option>
+            <option value="sphere">Сфера</option>
+            <option value="cone">Конус</option>
+            <option value="wedge">Клин</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <span class="form-label">Размер (W × H × D)</span>
+          <div class="form-row-3">
+            <input class="form-input" id="f-w" placeholder="W" value="1.0" />
+            <input class="form-input" id="f-h" placeholder="H" value="0.6" />
+            <input class="form-input" id="f-d" placeholder="D" value="1.0" />
+          </div>
+        </div>
+        <div class="form-row">
+          <span class="form-label">Цвет</span>
+          <input type="color" class="form-input" id="f-color" value="#8899aa" style="padding:2px;height:28px;cursor:pointer;" />
+        </div>
+        <button id="btn-add-block" onclick="addCustomBlock()">+ Добавить в библиотеку</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CENTER: 3D canvas -->
+  <div id="canvas-wrap">
+    <canvas id="c"></canvas>
+    <div id="help-overlay">ПКМ — вращение камеры · Колесо — зум · Del — удалить выбранный</div>
+    <div id="grid-info">сетка: 0.6 · <span id="snap-pos">-</span></div>
+  </div>
+
+  <!-- RIGHT: selected block properties -->
+  <div id="panel-right">
+    <div class="panel-section"><div class="panel-title">Свойства</div></div>
+    <div id="selected-info">
+      <div style="color:#334;font-size:10px;margin-top:8px;">Ничего не выбрано</div>
+    </div>
+  </div>
+
+</div>
+
+<div id="statusbar">
+  <div>режим: <b id="st-mode">Разместить</b></div>
+  <div>блоков: <b id="st-count">0</b></div>
+  <div>активный: <b id="st-active">—</b></div>
+  <div>камера: <b id="st-cam">—</b></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// =====================================================================
+//  BLOCKS LIBRARY
+// =====================================================================
+let BLOCKS = [
+  { id:'hull_xl',  label:'Корпус XL',    color:'#7a8fa0', w:3.0, h:0.9,  d:5.0, shape:'box' },
+  { id:'hull_l',   label:'Корпус L',     color:'#8899aa', w:2.0, h:0.7,  d:3.0, shape:'box' },
+  { id:'hull_m',   label:'Корпус M',     color:'#7788aa', w:1.2, h:0.6,  d:1.8, shape:'box' },
+  { id:'hull_s',   label:'Корпус S',     color:'#667799', w:0.8, h:0.5,  d:1.0, shape:'box' },
+  { id:'cabin',    label:'Кабина',       color:'#99aacc', w:0.9, h:0.9,  d:0.8, shape:'box' },
+  { id:'wing_l',   label:'Крыло Л',      color:'#6688aa', w:2.5, h:0.12, d:1.4, shape:'wedge' },
+  { id:'wing_r',   label:'Крыло П',      color:'#6688aa', w:2.5, h:0.12, d:1.4, shape:'wedge' },
+  { id:'engine_l', label:'Двигатель L',  color:'#aa8855', w:0.9, h:0.9,  d:1.4, shape:'cylinder' },
+  { id:'engine_s', label:'Двигатель S',  color:'#bb9966', w:0.5, h:0.5,  d:0.8, shape:'cylinder' },
+  { id:'cannon',   label:'Орудие',       color:'#888888', w:0.3, h:0.3,  d:1.8, shape:'cylinder' },
+  { id:'turret',   label:'Турель',       color:'#777788', w:0.7, h:0.5,  d:0.7, shape:'box' },
+  { id:'shield',   label:'Щит',          color:'#5577aa', w:2.0, h:1.6,  d:0.2, shape:'box' },
+  { id:'sensor',   label:'Сенсор',       color:'#aabb55', w:0.5, h:0.5,  d:0.5, shape:'sphere' },
+  { id:'bay',      label:'Ангар',        color:'#667788', w:2.2, h:1.1,  d:2.8, shape:'box' },
+  { id:'fin',      label:'Киль',         color:'#5588aa', w:0.12,h:1.2,  d:1.0, shape:'box' },
+  { id:'pod',      label:'Под-ракета',   color:'#aa7755', w:0.5, h:0.5,  d:1.2, shape:'cone' },
+];
+
+// =====================================================================
+//  THREE.JS SETUP
+// =====================================================================
+const canvas  = document.getElementById('c');
+const wrap    = document.getElementById('canvas-wrap');
+let W = wrap.clientWidth, H = wrap.clientHeight;
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.setSize(W, H);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x111111);
+scene.fog = new THREE.Fog(0x111111, 30, 80);
+
+const camera = new THREE.PerspectiveCamera(50, W/H, 0.1, 200);
+let orbit = { theta: -Math.PI*0.3, phi: Math.PI*0.28, dist: 16, tx:0, tz:0 };
+updateCamera();
+
+// Lights
+scene.add(new THREE.AmbientLight(0xffffff, 0.45));
+const sun = new THREE.DirectionalLight(0xffffff, 0.9);
+sun.position.set(10,16,8); sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048);
+sun.shadow.camera.near=0.5; sun.shadow.camera.far=80;
+sun.shadow.camera.left=-20; sun.shadow.camera.right=20;
+sun.shadow.camera.top=20; sun.shadow.camera.bottom=-20;
+scene.add(sun);
+const fill = new THREE.DirectionalLight(0x334466, 0.4);
+fill.position.set(-8,-4,-10); scene.add(fill);
+const rim = new THREE.DirectionalLight(0x2244aa, 0.25);
+rim.position.set(0,2,-12); scene.add(rim);
+
+// Grid
+buildGrid();
+
+// Ground (invisible, for raycasting)
+const groundPlane = new THREE.Plane(new THREE.Vector3(0,1,0), 0);
+
+// State
+let mode = 'place';
+let activeBlock = null;
+let ghostMesh = null;
+let placedObjects = [];
+let history = [];
+let selectedObj = null;
+
+// =====================================================================
+//  GRID
+// =====================================================================
+function buildGrid() {
+  const SIZE = 24, STEP = 0.6;
+  const half = SIZE/2 * STEP;
+  const mat = new THREE.LineBasicMaterial({ color:0x222222 });
+  const matBig = new THREE.LineBasicMaterial({ color:0x2a2a2a });
+  for(let i=0; i<=SIZE; i++) {
+    const t = -half + i*STEP;
+    const big = (i % 5 === 0);
+    const m = big ? matBig : mat;
+    addLine(m, -half,0,t, half,0,t);
+    addLine(m, t,0,-half, t,0,half);
+  }
+  // ground receive
+  const gnd = new THREE.Mesh(
+    new THREE.PlaneGeometry(SIZE*STEP+4, SIZE*STEP+4),
+    new THREE.MeshStandardMaterial({ color:0x141414, roughness:1 })
+  );
+  gnd.rotation.x = -Math.PI/2; gnd.position.y = -0.001;
+  gnd.receiveShadow = true; gnd.name='ground'; scene.add(gnd);
+}
+function addLine(mat, x1,y1,z1, x2,y2,z2) {
+  const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x1,y1,z1),new THREE.Vector3(x2,y2,z2)]);
+  scene.add(new THREE.Line(g,mat));
+}
+
+// =====================================================================
+//  GEOMETRY FACTORY
+// =====================================================================
+const SNAP = 0.6;
+function hexToInt(hex) { return parseInt(hex.replace('#',''), 16); }
+
+function makeGeom(b) {
+  const {w,h,d,shape} = b;
+  if(shape==='sphere')   return new THREE.SphereGeometry(Math.max(w,h,d)/2, 12, 8);
+  if(shape==='cylinder') return new THREE.CylinderGeometry(w/2, w/2*0.85, d, 10);
+  if(shape==='cone')     return new THREE.ConeGeometry(w/2, d, 8);
+  if(shape==='wedge') {
+    // simple wedge via BoxGeometry — good enough visually
+    return new THREE.BoxGeometry(w, h, d);
+  }
+  return new THREE.BoxGeometry(w, h, d);
+}
+
+function makeMesh(b, pos, ghost=false) {
+  const geo = makeGeom(b);
+  const col = hexToInt(b.color);
+  const mat = new THREE.MeshStandardMaterial({
+    color: ghost ? 0x2255aa : col,
+    roughness: 0.55, metalness: 0.35,
+    transparent: ghost, opacity: ghost ? 0.38 : 1,
+    emissive: ghost ? 0x1133aa : 0x000000,
+    emissiveIntensity: ghost ? 0.18 : 0
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.copy(pos);
+  // Y offset so block sits on ground
+  if(b.shape==='sphere')    mesh.position.y = Math.max(b.w,b.h,b.d)/2;
+  else if(b.shape==='cylinder'||b.shape==='cone') mesh.position.y = b.d/2; // rotated later
+  else mesh.position.y = b.h/2;
+
+  if(b.shape==='cylinder'||b.shape==='cone') mesh.rotation.x = Math.PI/2;
+
+  mesh.castShadow  = !ghost;
+  mesh.receiveShadow = !ghost;
+  mesh.userData = { blockDef: b, rotY:0, posX:0, posY:0, posZ:0 };
+  return mesh;
+}
+
+function snapGrid(v) {
+  return new THREE.Vector3(
+    Math.round(v.x/SNAP)*SNAP,
+    0,
+    Math.round(v.z/SNAP)*SNAP
+  );
+}
+
+// =====================================================================
+//  PALETTE
+// =====================================================================
+function buildPalette() {
+  const list = document.getElementById('block-list');
+  list.innerHTML = '';
+  BLOCKS.forEach(b => {
+    const btn = document.createElement('button');
+    btn.className = 'block-btn' + (activeBlock?.id===b.id ? ' selected' : '');
+    btn.dataset.id = b.id;
+    btn.innerHTML = `
+      <span class="block-color-dot" style="background:${b.color}"></span>
+      <span class="block-btn-label">${b.label}</span>
+      <span class="block-btn-dims">${b.w}×${b.h}×${b.d}</span>`;
+    btn.onclick = () => selectBlock(b);
+    list.appendChild(btn);
+  });
+}
+buildPalette();
+
+function selectBlock(b) {
+  activeBlock = b;
+  if(mode!=='place') setMode('place');
+  document.querySelectorAll('.block-btn').forEach(el => {
+    el.classList.toggle('selected', el.dataset.id===b.id);
+  });
+  document.getElementById('st-active').textContent = b.label;
+  updateGhost(null);
+}
+
+function addCustomBlock() {
+  const name  = document.getElementById('f-name').value.trim() || 'Блок';
+  const shape = document.getElementById('f-shape').value;
+  const w = parseFloat(document.getElementById('f-w').value)||1;
+  const h = parseFloat(document.getElementById('f-h').value)||0.6;
+  const d = parseFloat(document.getElementById('f-d').value)||1;
+  const color = document.getElementById('f-color').value;
+  const id = 'custom_' + Date.now();
+  const b = { id, label:name, color, w, h, d, shape };
+  BLOCKS.push(b);
+  buildPalette();
+  selectBlock(b);
+}
+
+// =====================================================================
+//  SCENE INTERACTION
+// =====================================================================
+function getMouseGroundPoint(e) {
+  const rect = wrap.getBoundingClientRect();
+  const nx = ((e.clientX-rect.left)/rect.width)*2-1;
+  const ny = -((e.clientY-rect.top)/rect.height)*2+1;
+  const ray = new THREE.Raycaster();
+  ray.setFromCamera(new THREE.Vector2(nx,ny), camera);
+  const pt = new THREE.Vector3();
+  ray.ray.intersectPlane(groundPlane, pt);
+  return pt;
+}
+
+function getMouseHitObject(e) {
+  const rect = wrap.getBoundingClientRect();
+  const nx = ((e.clientX-rect.left)/rect.width)*2-1;
+  const ny = -((e.clientY-rect.top)/rect.height)*2+1;
+  const ray = new THREE.Raycaster();
+  ray.setFromCamera(new THREE.Vector2(nx,ny), camera);
+  const hits = ray.intersectObjects(placedObjects);
+  return hits.length>0 ? hits[0].object : null;
+}
+
+function updateGhost(e) {
+  if(!activeBlock || mode!=='place') {
+    if(ghostMesh) { scene.remove(ghostMesh); ghostMesh=null; }
+    return;
+  }
+  if(!e) { if(ghostMesh) { scene.remove(ghostMesh); ghostMesh=null; } return; }
+  const pt = getMouseGroundPoint(e);
+  if(!pt) return;
+  const snapped = snapGrid(pt);
+  document.getElementById('snap-pos').textContent = `${snapped.x.toFixed(1)}, ${snapped.z.toFixed(1)}`;
+  if(!ghostMesh || ghostMesh.userData.blockDef?.id !== activeBlock.id) {
+    if(ghostMesh) scene.remove(ghostMesh);
+    ghostMesh = makeMesh(activeBlock, snapped, true);
+    scene.add(ghostMesh);
+  } else {
+    ghostMesh.position.x = snapped.x;
+    ghostMesh.position.z = snapped.z;
+  }
+}
+
+function placeBlock(e) {
+  if(!activeBlock) return;
+  const pt = getMouseGroundPoint(e);
+  if(!pt) return;
+  const snapped = snapGrid(pt);
+  const mesh = makeMesh(activeBlock, snapped, false);
+  scene.add(mesh);
+  placedObjects.push(mesh);
+  history.push({type:'place', mesh});
+  updateCount();
+}
+
+function selectObject(e) {
+  const hit = getMouseHitObject(e);
+  if(hit) {
+    if(selectedObj && selectedObj!==hit) deselect();
+    selectedObj = hit;
+    hit.material.emissive.set(0x112244);
+    hit.material.emissiveIntensity = 0.4;
+    showProperties(hit);
+  } else {
+    deselect();
+  }
+}
+
+function deselect() {
+  if(selectedObj) {
+    selectedObj.material.emissive.set(0x000000);
+    selectedObj.material.emissiveIntensity = 0;
+    selectedObj = null;
+  }
+  showProperties(null);
+}
+
+function deleteSelected() {
+  if(!selectedObj) return;
+  scene.remove(selectedObj);
+  placedObjects = placedObjects.filter(m=>m!==selectedObj);
+  history.push({type:'delete', mesh:selectedObj});
+  selectedObj = null;
+  showProperties(null);
+  updateCount();
+}
+
+function undoLast() {
+  if(!history.length) return;
+  const last = history.pop();
+  if(last.type==='place') {
+    scene.remove(last.mesh);
+    placedObjects = placedObjects.filter(m=>m!==last.mesh);
+    if(selectedObj===last.mesh) { selectedObj=null; showProperties(null); }
+  } else if(last.type==='delete') {
+    scene.add(last.mesh);
+    placedObjects.push(last.mesh);
+  }
+  updateCount();
+}
+
+function clearAll() {
+  if(!confirm('Очистить всю сцену?')) return;
+  placedObjects.forEach(m=>scene.remove(m));
+  placedObjects=[]; history=[];
+  selectedObj=null; showProperties(null);
+  updateCount();
+}
+
+function updateCount() {
+  document.getElementById('count').textContent = placedObjects.length;
+  document.getElementById('st-count').textContent = placedObjects.length;
+}
+
+// =====================================================================
+//  PROPERTIES PANEL
+// =====================================================================
+function showProperties(mesh) {
+  const el = document.getElementById('selected-info');
+  if(!mesh) {
+    el.className=''; el.innerHTML='<div style="color:#334;font-size:10px;margin-top:8px;">Ничего не выбрано</div>';
+    return;
+  }
+  const b = mesh.userData.blockDef;
+  const px = mesh.position.x.toFixed(1);
+  const py = mesh.position.y.toFixed(1);
+  const pz = mesh.position.z.toFixed(1);
+  const ry = ((mesh.rotation.y * 180/Math.PI) % 360).toFixed(0);
+  el.className='active';
+  el.innerHTML = `
+    <div class="info-row"><span class="info-key">Блок</span><span class="info-val" style="color:#4af">${b.label}</span></div>
+    <div class="info-row"><span class="info-key">Форма</span><span class="info-val">${b.shape}</span></div>
+    <div class="info-row"><span class="info-key">Размер</span><span class="info-val">${b.w}×${b.h}×${b.d}</span></div>
+    <hr class="info-sep">
+    <div class="panel-title" style="margin-bottom:6px;">Позиция</div>
+    <div class="xform-row">
+      <span class="xform-label">X</span>
+      <button class="xform-btn" onclick="moveSelected(-0.6,0,0)">−</button>
+      <span class="xform-val" id="si-px">${px}</span>
+      <button class="xform-btn" onclick="moveSelected(0.6,0,0)">+</button>
+    </div>
+    <div class="xform-row">
+      <span class="xform-label">Y</span>
+      <button class="xform-btn" onclick="moveSelected(0,-0.3,0)">−</button>
+      <span class="xform-val" id="si-py">${py}</span>
+      <button class="xform-btn" onclick="moveSelected(0,0.3,0)">+</button>
+    </div>
+    <div class="xform-row">
+      <span class="xform-label">Z</span>
+      <button class="xform-btn" onclick="moveSelected(0,0,-0.6)">−</button>
+      <span class="xform-val" id="si-pz">${pz}</span>
+      <button class="xform-btn" onclick="moveSelected(0,0,0.6)">+</button>
+    </div>
+    <hr class="info-sep">
+    <div class="panel-title" style="margin-bottom:6px;">Вращение Y</div>
+    <div class="xform-row">
+      <button class="xform-btn" onclick="rotateSelected(-15)" style="width:auto;padding:0 8px;">−15°</button>
+      <span class="xform-val" id="si-ry">${ry}°</span>
+      <button class="xform-btn" onclick="rotateSelected(15)" style="width:auto;padding:0 8px;">+15°</button>
+    </div>
+    <div class="xform-row" style="margin-top:4px;">
+      <button class="xform-btn" onclick="rotateSelected(-90)" style="width:auto;padding:0 8px;">−90°</button>
+      <span class="xform-val"> </span>
+      <button class="xform-btn" onclick="rotateSelected(90)" style="width:auto;padding:0 8px;">+90°</button>
+    </div>
+    <hr class="info-sep">
+    <button class="xform-btn" onclick="deleteSelected()" style="width:100%;background:#2a1a1a;border-color:#533;color:#a55;font-size:11px;height:26px;">Del — Удалить</button>
+  `;
+}
+
+function moveSelected(dx,dy,dz) {
+  if(!selectedObj) return;
+  selectedObj.position.x += dx;
+  selectedObj.position.y = Math.max(0.01, selectedObj.position.y + dy);
+  selectedObj.position.z += dz;
+  const b = selectedObj.userData.blockDef;
+  if(document.getElementById('si-px')) {
+    document.getElementById('si-px').textContent = selectedObj.position.x.toFixed(1);
+    document.getElementById('si-py').textContent = selectedObj.position.y.toFixed(1);
+    document.getElementById('si-pz').textContent = selectedObj.position.z.toFixed(1);
+  }
+}
+
+function rotateSelected(deg) {
+  if(!selectedObj) return;
+  selectedObj.rotation.y += deg * Math.PI/180;
+  if(document.getElementById('si-ry')) {
+    const ry = ((selectedObj.rotation.y * 180/Math.PI) % 360).toFixed(0);
+    document.getElementById('si-ry').textContent = ry + '°';
+  }
+}
+
+// =====================================================================
+//  SAVE / LOAD
+// =====================================================================
+function saveScene() {
+  const data = {
+    blocks: BLOCKS,
+    placed: placedObjects.map(m => ({
+      blockId: m.userData.blockDef.id,
+      px: m.position.x, py: m.position.y, pz: m.position.z,
+      ry: m.rotation.y
+    }))
+  };
+  const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'ship_' + Date.now() + '.json';
+  a.click();
+}
+
+function loadScene() {
+  const inp = document.createElement('input');
+  inp.type='file'; inp.accept='.json';
+  inp.onchange = e => {
+    const f = e.target.files[0];
+    if(!f) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if(data.blocks) { BLOCKS = data.blocks; buildPalette(); }
+        clearAll_noConfirm();
+        data.placed.forEach(p => {
+          const b = BLOCKS.find(x=>x.id===p.blockId);
+          if(!b) return;
+          const mesh = makeMesh(b, new THREE.Vector3(p.px,0,p.pz), false);
+          mesh.position.y = p.py;
+          mesh.rotation.y = p.ry;
+          scene.add(mesh);
+          placedObjects.push(mesh);
+        });
+        updateCount();
+      } catch(err){ alert('Ошибка загрузки: '+err); }
+    };
+    reader.readAsText(f);
+  };
+  inp.click();
+}
+function clearAll_noConfirm() {
+  placedObjects.forEach(m=>scene.remove(m));
+  placedObjects=[]; history=[];
+  selectedObj=null; showProperties(null);
+  updateCount();
+}
+
+// =====================================================================
+//  MODE
+// =====================================================================
+function setMode(m) {
+  mode = m;
+  document.getElementById('mode-place').classList.toggle('active', m==='place');
+  document.getElementById('mode-select').classList.toggle('active', m==='select');
+  document.getElementById('st-mode').textContent = m==='place'?'Разместить':'Выбрать';
+  if(m==='select' && ghostMesh) { scene.remove(ghostMesh); ghostMesh=null; }
+}
+
+// =====================================================================
+//  CAMERA ORBIT
+// =====================================================================
+function updateCamera() {
+  const {theta,phi,dist,tx,tz} = orbit;
+  const x = tx + dist * Math.sin(phi) * Math.sin(theta);
+  const y = dist * Math.cos(phi);
+  const z = tz + dist * Math.sin(phi) * Math.cos(theta);
+  camera.position.set(x,y,z);
+  camera.lookAt(tx, 0.8, tz);
+  document.getElementById('st-cam').textContent = `θ${(theta*180/Math.PI).toFixed(0)}° φ${(phi*180/Math.PI).toFixed(0)}°`;
+}
+
+function resetCamera() {
+  orbit = { theta:-Math.PI*0.3, phi:Math.PI*0.28, dist:16, tx:0, tz:0 };
+  updateCamera();
+}
+
+// =====================================================================
+//  EVENTS
+// =====================================================================
+let orbitActive=false, panActive=false;
+let lastMX=0, lastMY=0;
+
+canvas.addEventListener('contextmenu', e=>e.preventDefault());
+
+canvas.addEventListener('mousedown', e => {
+  if(e.button===2) { orbitActive=true; lastMX=e.clientX; lastMY=e.clientY; return; }
+  if(e.button===1) { panActive=true; lastMX=e.clientX; lastMY=e.clientY; return; }
+  if(e.button===0) {
+    if(mode==='place' && activeBlock) placeBlock(e);
+    else if(mode==='select') selectObject(e);
+  }
+});
+
+canvas.addEventListener('mouseup', e => {
+  if(e.button===2) orbitActive=false;
+  if(e.button===1) panActive=false;
+});
+
+canvas.addEventListener('mousemove', e => {
+  if(orbitActive) {
+    const dx = e.clientX-lastMX, dy = e.clientY-lastMY;
+    lastMX=e.clientX; lastMY=e.clientY;
+    orbit.theta -= dx*0.007;
+    orbit.phi = Math.max(0.1, Math.min(Math.PI/2-0.02, orbit.phi - dy*0.007));
+    updateCamera(); return;
+  }
+  if(panActive) {
+    const dx = e.clientX-lastMX, dy = e.clientY-lastMY;
+    lastMX=e.clientX; lastMY=e.clientY;
+    const right = new THREE.Vector3(); camera.getWorldDirection(right);
+    right.y=0; right.normalize();
+    const up = new THREE.Vector3(0,1,0);
+    const side = right.cross(up).normalize();
+    orbit.tx += side.x * dx * 0.012 * orbit.dist/10;
+    orbit.tz += side.z * dx * 0.012 * orbit.dist/10;
+    updateCamera(); return;
+  }
+  updateGhost(e);
+});
+
+canvas.addEventListener('mouseleave', () => {
+  orbitActive=false; panActive=false;
+  if(ghostMesh) { scene.remove(ghostMesh); ghostMesh=null; }
+  document.getElementById('snap-pos').textContent='-';
+});
+
+canvas.addEventListener('wheel', e => {
+  orbit.dist = Math.max(3, Math.min(50, orbit.dist + e.deltaY*0.025));
+  updateCamera();
+});
+
+document.addEventListener('keydown', e => {
+  if(e.key==='Delete'||e.key==='Backspace') { if(selectedObj) deleteSelected(); }
+  if(e.key==='Escape') {
+    if(mode==='place') { activeBlock=null; if(ghostMesh){scene.remove(ghostMesh);ghostMesh=null;} document.querySelectorAll('.block-btn').forEach(b=>b.classList.remove('selected')); document.getElementById('st-active').textContent='—'; }
+    else setMode('place');
+    deselect();
+  }
+  if(e.key==='g'||e.key==='G') setMode(mode==='place'?'select':'place');
+  if(e.key==='z'&&(e.ctrlKey||e.metaKey)) { e.preventDefault(); undoLast(); }
+  if(selectedObj) {
+    if(e.key==='ArrowLeft')  moveSelected(-SNAP,0,0);
+    if(e.key==='ArrowRight') moveSelected(SNAP,0,0);
+    if(e.key==='ArrowUp'&&e.shiftKey)   moveSelected(0,0.3,0);
+    if(e.key==='ArrowDown'&&e.shiftKey) moveSelected(0,-0.3,0);
+    if(e.key==='ArrowUp'&&!e.shiftKey)  moveSelected(0,0,-SNAP);
+    if(e.key==='ArrowDown'&&!e.shiftKey) moveSelected(0,0,SNAP);
+    if(e.key==='r'||e.key==='R') rotateSelected(e.shiftKey?-90:90);
+  }
+});
+
+// Resize
+window.addEventListener('resize', () => {
+  W = wrap.clientWidth; H = wrap.clientHeight;
+  renderer.setSize(W,H);
+  camera.aspect = W/H;
+  camera.updateProjectionMatrix();
+});
+
+// =====================================================================
+//  RENDER LOOP
+// =====================================================================
+function animate() {
+  requestAnimationFrame(animate);
+  renderer.render(scene,camera);
+}
+animate();
+</script>
+</body>
+</html>

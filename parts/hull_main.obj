@@ -1,0 +1,42 @@
+# Main Hull - Spaceship Fuselage
+# Tapered body: ~5 units long (Z), ~2 units wide (X), ~0.8 units tall (Y)
+
+# Tail cross-section (z=-2.5)
+v -0.8 -0.4 -2.5
+v  0.8 -0.4 -2.5
+v  0.8  0.4 -2.5
+v -0.8  0.4 -2.5
+
+# Mid cross-section (z=0, widest)
+v -1.0 -0.4  0.0
+v  1.0 -0.4  0.0
+v  1.0  0.4  0.0
+v -1.0  0.4  0.0
+
+# Nose cross-section (z=2.5)
+v -0.3 -0.2  2.5
+v  0.3 -0.2  2.5
+v  0.3  0.25 2.5
+v -0.3  0.25 2.5
+
+# Bottom panels
+f 1 2 6 5
+f 5 6 10 9
+
+# Top panels
+f 8 7 3 4
+f 12 11 7 8
+
+# Right panels
+f 2 3 7 6
+f 6 7 11 10
+
+# Left panels
+f 5 8 4 1
+f 9 12 8 5
+
+# Tail cap
+f 4 3 2 1
+
+# Nose cap
+f 9 10 11 12
